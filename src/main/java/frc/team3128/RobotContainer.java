@@ -22,35 +22,13 @@ import static frc.team3128.Constants.HoodConstants.*;
 
 import static frc.team3128.Constants.ClimberConstants.*;
 
-import frc.team3128.commands.CmdAlign;
-import frc.team3128.commands.CmdArcadeDrive;
-import frc.team3128.commands.CmdBallJoystickPursuit;
-import frc.team3128.commands.CmdClimbEncoder;
-import frc.team3128.commands.CmdClimbTraversalGyro;
-import frc.team3128.commands.CmdExtendIntake;
-import frc.team3128.commands.CmdExtendIntakeAndRun;
-import frc.team3128.commands.CmdHopperShooting;
-import frc.team3128.commands.CmdIntakeCargo;
-import frc.team3128.commands.CmdIntakeShoot;
-import frc.team3128.commands.CmdOuttake;
-import frc.team3128.commands.CmdRetractHopper;
-import frc.team3128.commands.CmdShoot;
-import frc.team3128.commands.CmdShootAlign;
-import frc.team3128.commands.CmdShootDist;
+
 import frc.team3128.common.hardware.input.NAR_Joystick;
 import frc.team3128.common.hardware.input.NAR_XboxController;
 import frc.team3128.common.hardware.limelight.LEDMode;
 import frc.team3128.common.hardware.limelight.Limelight;
-import frc.team3128.common.narwhaldashboard.NarwhalDashboard;
 import frc.team3128.common.utility.Log;
 import frc.team3128.common.utility.NAR_Shuffleboard;
-import frc.team3128.subsystems.Climber;
-import frc.team3128.subsystems.Hood;
-import frc.team3128.subsystems.Hopper;
-import frc.team3128.subsystems.Intake;
-import frc.team3128.subsystems.LimelightSubsystem;
-import frc.team3128.subsystems.NAR_Drivetrain;
-import frc.team3128.subsystems.Shooter;
 
 /**
  * This class is where the bulk of the robot should be declared. Since
@@ -60,13 +38,6 @@ import frc.team3128.subsystems.Shooter;
  * commands, and button mappings) should be declared here.
  */
 public class RobotContainer {
-    private NAR_Drivetrain m_drive;
-    private Shooter m_shooter;
-    private Intake m_intake;   
-    private Hopper m_hopper;
-    private Climber m_climber;
-    private Hood m_hood;
-    private LimelightSubsystem m_ll;
 
     private NAR_Joystick m_leftStick;
     private NAR_Joystick m_rightStick;
@@ -78,26 +49,13 @@ public class RobotContainer {
 
     public RobotContainer() {
         // ConstantsInt.initTempConstants();
-        m_drive = NAR_Drivetrain.getInstance();
-        m_shooter = Shooter.getInstance();
-        m_intake = Intake.getInstance();
-        m_hopper = Hopper.getInstance();
-        m_climber = Climber.getInstance();
-        m_hood = Hood.getInstance();
-        m_ll = LimelightSubsystem.getInstance();
 
         //Enable all PIDSubsystems so that useOutput runs
-        m_shooter.enable();
-        m_hood.enable();
-
         m_leftStick = new NAR_Joystick(0);
         m_rightStick = new NAR_Joystick(1);
         m_operatorController = new NAR_XboxController(2);
 
-        m_commandScheduler.setDefaultCommand(m_drive, new CmdArcadeDrive(m_rightStick::getY, m_rightStick::getTwist, m_rightStick::getThrottle));
-
         initDashboard();
-        configureDriverOperator();
         // configureButtonBindings();
         
         if(RobotBase.isSimulation())
@@ -106,195 +64,17 @@ public class RobotContainer {
 
     private void configureButtonBindings() {
 
-        // RIGHT
-        
-        m_rightStick.getButton(1).whileActiveOnce(new CmdShootAlign());
-
-        // When interpolating, uncomment this and the lines in Shooter.java and Hood.java calling ConstantsInt
-        // m_rightStick.getButton(1).whileActiveOnce(new CmdShoot(2700, 12));
-
-        m_rightStick.getButton(2).whileActiveOnce(new CmdExtendIntakeAndRun())
-                                .whenInactive(new CmdIntakeCargo().withTimeout(0.25));
-        
-        // m_rightStick.getButton(3).whileActiveOnce(new ParallelCommandGroup(
-        //             new CmdBallJoystickPursuit(
-        //                 m_rightStick::getY, m_rightStick::getTwist, m_rightStick::getThrottle),
-        //             new CmdExtendIntakeAndRun()) 
-
-        // lower hub shot
-        m_rightStick.getButton(3).whileActiveOnce(
-                    new ParallelCommandGroup(
-                        new CmdShoot(1200, 34.4),
-                        new RunCommand(m_drive::stop, m_drive)));
-
-        // ram shot
-        m_rightStick.getButton(4).whileActiveOnce(
-                        new CmdShoot(2800, 13.4));
-
-        m_rightStick.getButton(5).whenActive(new CmdClimbTraversalGyro());
-
-        m_rightStick.getButton(7).whenActive(new CmdClimbEncoder(0));
-
-        m_rightStick.getButton(8).whileActiveOnce(new SequentialCommandGroup(
-                                                new CmdExtendIntake().withTimeout(0.1), 
-                                                new CmdOuttake()));
-
-        m_rightStick.getButton(10).whenActive(new InstantCommand(m_climber::bothStop, m_climber));
-
-        m_rightStick.getButton(11).whenActive(new CmdExtendIntake());
-
-        m_rightStick.getButton(13).whenActive(() -> m_hood.startPID(MIN_ANGLE));
-
-        m_rightStick.getButton(14).whenActive(() -> m_hood.startPID(MAX_ANGLE));
-
-        m_rightStick.getButton(16).whenActive(() -> m_intake.retractIntake());
-
-        m_rightStick.getUpPOVButton().whenActive(() -> m_ll.turnShooterLEDOn());
-        m_rightStick.getDownPOVButton().whenActive(() -> m_ll.turnShooterLEDOff());
-
-        // LEFT
-
-        m_leftStick.getButton(2).whenActive(() -> m_climber.resetLeftEncoder());        
-
-        m_leftStick.getButton(5).whenActive(() -> m_hood.zeroEncoder()); 
-
-        m_leftStick.getButton(8).whenActive(new CmdClimbEncoder(CLIMB_ENC_TO_TOP));
-
-        m_leftStick.getUpPOVButton().whenActive(new InstantCommand(m_climber::bothExtend, m_climber))
-                                    .whenInactive(new InstantCommand(m_climber::bothStop, m_climber));
-
-        m_leftStick.getDownPOVButton().whenActive(new InstantCommand(m_climber::bothRetract, m_climber))
-                                    .whenInactive(new InstantCommand(m_climber::bothStop, m_climber));
-        
-        m_leftStick.getRightPOVButton().whenActive(new InstantCommand(m_climber::extendPiston, m_climber));
-        
-        m_leftStick.getLeftPOVButton().whenActive(new InstantCommand(m_climber::retractPiston, m_climber));
-
-        m_leftStick.getButton(11).whenActive(new InstantCommand(m_climber::bothManualExtend, m_climber))
-                                .whenInactive(new InstantCommand(m_climber::bothStop, m_climber));
-
-        m_leftStick.getButton(16).whenActive(new InstantCommand(m_climber::bothManualRetract, m_climber))
-                                .whenInactive(new InstantCommand(m_climber::bothStop, m_climber));
-
-        m_leftStick.getButton(13).whenActive(new InstantCommand(m_climber::bothExtend, m_climber))
-                                .whenInactive(new InstantCommand(m_climber::bothStop, m_climber));
-
-        m_leftStick.getButton(14).whenActive(new InstantCommand(m_climber::bothRetract, m_climber))
-                                .whenInactive(new InstantCommand(m_climber::bothStop, m_climber));
-
-        m_leftStick.getButton(12).whenActive(new InstantCommand(m_climber::extendPiston, m_climber));
-        m_leftStick.getButton(15).whenActive(new InstantCommand(m_climber::retractPiston, m_climber));
-    }
-
-    public void configureDriverOperator() {
-        m_operatorController.getRightTrigger().and(m_operatorController.getButton("RightBumper").negate()).whileActiveOnce(new CmdShootAlign());
-
-        m_operatorController.getLeftTrigger().whileActiveOnce(
-            new CmdShoot(2800, 13.4));
-
-        // When interpolating, uncomment this and the lines in Shooter.java and Hood.java calling ConstantsInt
-        // m_operatorController.getRightTrigger().whileActiveOnce(new CmdShoot(2700, 12));
-
-        m_operatorController.getButton("RightBumper").and(m_operatorController.getRightTrigger().negate()).whileActiveOnce(new CmdExtendIntakeAndRun())
-                                            .whenInactive(new CmdIntakeCargo().withTimeout(0.25));
-                                    
-        m_operatorController.getButton("LeftBumper").whileActiveOnce(new SequentialCommandGroup(
-                                            new CmdExtendIntake().withTimeout(0.1), 
-                                            new CmdOuttake()));
-
-        m_operatorController.getRightTrigger().and(m_operatorController.getButton("RightBumper")).whileActiveOnce(new CmdIntakeShoot());
-
-        m_operatorController.getButton("RightStick").whenActive(new CmdClimbEncoder(CLIMB_ENC_TO_TOP));
-
-        m_operatorController.getButton("LeftStick").whenActive(() -> m_shooter.reverseShoot()).whenInactive(() -> m_shooter.stopShoot());
-
-        // m_operatorController.getButton("LeftStick").whileActiveOnce(
-        //     new ParallelCommandGroup(
-        //         new CmdShoot(1200, 34.4),
-        //         new RunCommand(m_drive::stop, m_drive)));
-
-        m_operatorController.getButton("Start").whenActive(new CmdClimbTraversalGyro());
-        m_operatorController.getButton("Back").whenActive(new InstantCommand(m_climber::bothStop, m_climber));
-
-        // m_operatorController.getButton("Start").whenActive(new InstantCommand(m_climber::bothManualExtend, m_climber))
-        // .whenReleased(new InstantCommand(m_climber::bothStop, m_climber));
-
-        // m_operatorController.getButton("Back").whenActive(new InstantCommand(m_climber::bothManualRetract, m_climber))
-        // .whenReleased(new InstantCommand(m_climber::bothStop, m_climber));
-
-        m_operatorController.getButton("B").whenActive(new InstantCommand(m_climber::extendPiston, m_climber));
-
-        m_operatorController.getButton("X").whenActive(new InstantCommand(m_climber::retractPiston, m_climber));
-
-        m_operatorController.getButton("Y").whenActive(new InstantCommand(m_climber::bothExtend, m_climber))
-        .whenInactive(new InstantCommand(m_climber::bothStop, m_climber));
-
-        m_operatorController.getButton("A").whenActive(new InstantCommand(m_climber::bothRetract, m_climber))
-        .whenInactive(new InstantCommand(m_climber::bothStop, m_climber));
-
-        m_operatorController.getUpPOVButton().whenPressed(new InstantCommand(m_climber::bothManualExtend, m_climber))
-                                .whenReleased(new InstantCommand(m_climber::bothStop, m_climber));
-
-        m_operatorController.getDownPOVButton().whenPressed(new InstantCommand(m_climber::bothManualRetract, m_climber))
-                                .whenReleased(new InstantCommand(m_climber::bothStop, m_climber));
-
-        // RIGHT 
-
-        m_rightStick.getButton(5).whenActive(() -> m_hood.zeroEncoder()); 
-
-        m_rightStick.getButton(6).whenActive(() -> m_climber.resetLeftEncoder());
-
-        m_rightStick.getButton(13).whenActive(() -> m_hood.startPID(MIN_ANGLE));
-
-        m_rightStick.getButton(14).whenActive(() -> m_hood.startPID(MAX_ANGLE));
-
-        m_rightStick.getUpPOVButton().whenActive(() -> m_ll.turnShooterLEDOn());
-        m_rightStick.getDownPOVButton().whenActive(() -> m_ll.turnShooterLEDOff());
-
     }
 
     public void init() {
-        m_climber.retractPiston();
-        m_intake.retractIntake();
-        m_hood.startPID(HOME_ANGLE);
+        
     }
 
-    private void initDashboard() {
-        NAR_Shuffleboard.addComplex("General","Drivetrain",m_drive).withSize(3, 1).withPosition(0,0);
-        NAR_Shuffleboard.addComplex("General","Intake",m_intake).withSize(3, 1).withPosition(3,0);
-        NAR_Shuffleboard.addComplex("General","Hopper",m_hopper).withSize(3, 1).withPosition(6,0);
-        NAR_Shuffleboard.addComplex("General","Climber",m_climber).withSize(3, 1).withPosition(0,1);
-        NAR_Shuffleboard.addComplex("General","Shooter",m_shooter).withSize(3, 1).withPosition(3, 1);
-        NAR_Shuffleboard.addComplex("General","Hood",m_hood).withSize(3, 1).withPosition(6,1);
-
-        m_drive.initShuffleboard();
-        m_intake.initShuffleboard();
-        m_hopper.initShuffleboard();
-        m_climber.initShuffleboard();
-        m_shooter.initShuffleboard();
-        m_hood.initShuffleboard();
-        m_ll.initShuffleboard();
-
-        NarwhalDashboard.setSelectedLimelight(m_ll.getBallLimelight());
-        NarwhalDashboard.startServer();   
-        
+    private void initDashboard() {        
         Log.info("NarwhalRobot", "Setting up limelight chooser...");
-      
-        for (Limelight ll : new Limelight[] {m_ll.getShooterLimelight(), m_ll.getBallLimelight()}) {
-            NarwhalDashboard.addLimelight(ll);
-            ll.setLEDMode(LEDMode.OFF);
-        }
+
     }
 
     public void updateDashboard() {
-        NAR_Shuffleboard.update();
-        NarwhalDashboard.put("time", Timer.getMatchTime());
-        NarwhalDashboard.put("voltage", RobotController.getBatteryVoltage());
-        NarwhalDashboard.put("rpm", m_shooter.getMeasurement());
-        NarwhalDashboard.put("range", m_ll.calculateShooterDistance());
-        NarwhalDashboard.put("x", m_drive.getPose().getX());
-        NarwhalDashboard.put("y", m_drive.getPose().getY());
-        NarwhalDashboard.put("theta", Units.degreesToRadians(m_drive.getHeading()));
-        NarwhalDashboard.put("climbEnc", m_climber.getCurrentTicks());
     }
 }

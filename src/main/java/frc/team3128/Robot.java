@@ -12,8 +12,6 @@ import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.livewindow.LiveWindow;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
-import frc.team3128.autonomous.AutoPrograms;
-import frc.team3128.subsystems.NAR_Drivetrain;
 
 /**
  * The VM is configured to automatically run this class, and to call the functions corresponding to
@@ -23,7 +21,6 @@ public class Robot extends TimedRobot {
 
     public static RobotContainer m_robotContainer = new RobotContainer();
     private Command m_autonomousCommand;
-    public static AutoPrograms autoPrograms = new AutoPrograms();
 
     @Override
     public void robotInit(){
@@ -38,7 +35,6 @@ public class Robot extends TimedRobot {
     @Override
     public void autonomousInit() {
         m_robotContainer.init();
-        m_autonomousCommand = autoPrograms.getAutonomousCommand();
         if (m_autonomousCommand != null) {
             m_autonomousCommand.schedule();
         }
@@ -52,9 +48,7 @@ public class Robot extends TimedRobot {
     @Override
     public void teleopInit() {
         m_robotContainer.init();
-        CommandScheduler.getInstance().cancelAll();
-        NAR_Drivetrain.getInstance().stop();
-    }
+        CommandScheduler.getInstance().cancelAll();    }
 
     @Override
     public void teleopPeriodic() {
